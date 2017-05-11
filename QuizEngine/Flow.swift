@@ -9,7 +9,8 @@
 import Foundation
 
 protocol Router {
-    func routeTo(question: String, answerCallback: @escaping(String) -> Void)
+    typealias AnswerCallnack = (String) -> Void
+    func routeTo(question: String, answerCallback: @escaping AnswerCallnack)
 }
 
 class Flow {
@@ -23,13 +24,20 @@ class Flow {
     
     func start() {
         if let firstQuestion = self.questions.first {
-            self.router.routeTo(question: firstQuestion) {[weak self] _ in
-                guard let strongSelf = self else {
-                    return
+            self.router.routeTo(question: firstQuestion, answerCallback: routNext(from: firstQuestion))
+        }
+    }
+    
+    private func routNext(from question: String) -> Router.AnswerCallnack {
+        return { [weak self] _ in
+            guard let strongSelf = self else {
+                return
+            }
+            if let currentQuestionIndex = strongSelf.questions.index(of: question) {
+                if currentQuestionIndex + 1 < strongSelf.questions.count {
+                    let nextQuestion = strongSelf.questions[currentQuestionIndex+1]
+                    strongSelf.router.routeTo(question: nextQuestion, answerCallback: strongSelf.routNext(from: nextQuestion))
                 }
-                let firstQuestionIndex = strongSelf.questions.index(of: firstQuestion)!
-                let nextQuestion = strongSelf.questions[firstQuestionIndex+1]
-                strongSelf.router.routeTo(question: nextQuestion) {_ in}
             }
         }
     }
